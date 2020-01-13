@@ -1,0 +1,136 @@
+<!--地址管理-->
+<template>
+  <view class="{{currentPage==0?'':'hidden'}}">
+    <addressList :list.sync="addressList" @currentPage.user="getCurrentPage"></addressList>
+  </view>
+  <view class="{{currentPage==1?'':'hidden'}}">
+    <addressAdd @currentPage.user="getCurrentPage"></addressAdd>
+  </view>
+  <view class="{{currentPage==2?'':'hidden'}}">
+    <addressEdit @currentPage.user="getCurrentPage" ></addressEdit>
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+import AddressList from "../components/address_list";
+import AddressAdd from "../components/address_add";
+import AddressEdit from "../components/address_edit";
+import api from "../api/api";
+import tip from '@/utils/tip';
+import {
+  USER_SPECICAL_INFO
+} from '@/utils/constant';
+export default class Address extends wepy.page {
+  config = {
+    navigationBarTitleText: '地址管理',
+  }
+  data = {
+    addressList: [],
+    receiverInfo:{},
+
+    //显示当前组件 0 列表 1新增 2编辑
+    currentPage: 0,
+    type: "" //哪个页面跳转过来的
+  }
+
+  async getUserAddress(phone,code) {
+    let that = this;
+    let userSpecialInfo = wepy.getStorageSync(USER_SPECICAL_INFO) || {};
+    let openId = userSpecialInfo.openid;
+    const json = await api.getUserAddress({
+      query: {
+        openId: openId
+      }
+    });
+
+    if (json.data.code == 0) {
+      this.addressList=json.data.list;
+      this.$invoke("addressList","refreshList", this.addressList);
+    } else {
+      tip.error(json.data.msg)
+    }
+    that.showLoading = false;
+  }
+
+  async receiverInf(id) {
+    let that = this;
+    let userSpecialInfo = wepy.getStorageSync(USER_SPECICAL_INFO) || {};
+    const json = await api.receiverInfoById({
+      query: {
+        id: id
+      }
+    });
+    if (json.data.code == 0) {
+      this.receiverInfo=json.data.receiverInfo;
+      this.$invoke("addressEdit","refresh", this.receiverInfo);
+      console.log("=================================")
+    } else {
+      tip.error(json.data.msg)
+    }
+    that.showLoading = false;
+  }
+
+  components = {
+    addressList: AddressList,
+    addressAdd: AddressAdd,
+    addressEdit: AddressEdit
+  }
+
+  onLoad(option) {
+    this.currentPage = 0;
+    this.getUserAddress();
+    this.type = (option.type==undefined?"":option.type);
+    this.$invoke("addressList","setOrgType", this.type);
+  }
+
+/**
+ * $broadcast事件是由父组件发起的，所有子组件都会收到此广播事件，除非事件被手动取消。
+ * 
+ * $emit事件发起组件的所有祖先组件依次接收到$emit事件。
+ * 
+ * 
+ * $invoke是一个页面或者组件对另一个组件中的方法直接调用，通过传入组件路径找到相应的组件，然后调用其方法
+ * 
+ * 
+ * */ 
+
+
+
+
+  onShow(){
+    let that = this;
+    this.getUserAddress();
+  }
+  computed = {
+
+  }
+  methods = {
+    getCurrentPage(cur,id) {
+      this.currentPage = cur;
+      if (cur!=1&&cur!=0) {
+        this.receiverInf(id);
+      }
+    }
+  }
+  onUnload() {
+    // if (this.currentPage !== 0) {
+    //   wx.navigateTo({
+    //     url: "/pages/address"
+    //   })
+    // }
+  }
+  events = {
+      refreshAddList(msg){
+          this.getUserAddress();
+      }
+  }
+
+}
+
+</script>
+<style lang="less">
+.hidden {
+  display: none;
+}
+
+</style>
